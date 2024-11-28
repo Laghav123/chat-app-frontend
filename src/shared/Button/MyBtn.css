@@ -1,0 +1,21 @@
+.my-btn {
+    padding: 8px 12px;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.5s ease, transform 0.5s ease;
+    border-radius: 5px;
+}
+
+.my-btn:hover {
+    background-color: #0056b3;
+    /* Darken background on hover (works with 'primary' variant) */
+    color: white;
+    /* Ensure text color stays readable */
+    transform: scale(1.05);
+    /* Slight zoom effect on hover */
+}
+
+.my-btn:active {
+    transform: scale(0.98);
+    /* Slight press-in effect */
+}

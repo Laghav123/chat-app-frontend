@@ -2,95 +2,115 @@ import React, { useEffect, useRef, useState } from 'react';
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import './ChatRoom.css';
 import WelcomeMessage from '../shared/Button/Welcome Message/WelcomeMessage';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const ChatRoom = () => {
     // Dummy messages data
     const [messages, setMessages] = useState([
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
-        { id: 1, sender: 'User1', text: 'Hello there!' },
-        { id: 2, sender: 'User2', text: 'Hi! How are you?' },
-        { id: 3, sender: 'User1', text: 'I am good, thank you!' },
+        { from: 'User1', content: 'Hello there!' },
+        { from: 'User2', content: 'Hi! How are you?' },
+        { from: 'User1', content: 'I am good, thank you!' },
     ]);
+    let ws = useRef(null);
 
     const [newMessage, setNewMessage] = useState('');
     const location = useLocation();
     const { userName } = location.state || {};
     const msgBoxRef = useRef(null);
+    const initialized = useRef(false);
+    const navigate = useNavigate();
 
-    const handleSubmit = (e) => {
+    useEffect(() => {
+        if(initialized.current) return;
+        initialized.current = true;
+        
+        // connecting to server and establishing WebSockets events
+        const params = new URLSearchParams({ userName: userName });
+        ws.current = new WebSocket(`ws://localhost:1235/chat/chatroom?${params.toString()}`);
+
+        ws.current.onopen = () => {
+            console.log("WebSocket connection established.");
+        };
+
+        ws.current.onmessage = (event) => {
+            const message = JSON.parse(event.data);
+            setMessages((prevMessages) => [...prevMessages, message]);
+        };
+
+        ws.current.onerror = (error) => {
+            console.error("WebSocket error: ", error);
+            navigate("/");
+        };
+
+        ws.current.onclose = () => {
+            console.log("WebSocket connection closed.");
+            alert("The connection was closed. Redirecting to the home page.");
+            navigate("/");
+        };
+
+        return () => {
+            if (ws.current && ws.current.readyState === WebSocket.OPEN) {
+                ws.current.close();
+            }
+        };
+    }, [userName, navigate]);
+
+
+    const handleSendMsg = (e) => {
         e.preventDefault();
         if (newMessage.trim()) {
-            const newMsg = { id: messages.length + 1, sender: 'You', text: newMessage };
-            setMessages([...messages, newMsg]);
-            setNewMessage('');
+            const newMsg = { from: userName, content: newMessage };
+            if(ws?.current && ws.current.readyState === WebSocket.OPEN){
+                ws.current.send(JSON.stringify(newMsg));
+            }
         }
+        setNewMessage('');
     };
-    
+
     const scrollBottom = () => {
-        if(msgBoxRef.current){
+        if (msgBoxRef.current) {
             msgBoxRef.current.scrollTop = msgBoxRef.current.scrollHeight;
         }
     }
 
-    useEffect(()=>{
+    useEffect(() => {
         scrollBottom();
     }, [messages])
 
     return (
         <>
-        <WelcomeMessage userName={userName}/>
-        <Container fluid className="chat-room">
-            <Row>
-                <Col>
-                    <div className="messages-box" ref={msgBoxRef}>
-                        {messages.map((msg) => (
-                            <div key={msg.id} className={`message ${msg.sender === 'You' ? 'own-message' : ''}`}>
-                                <strong>{msg.sender}: </strong>
-                                <span>{msg.text}</span>
-                            </div>
-                        ))}
-                    </div>
-                </Col>
-            </Row>
+            <WelcomeMessage userName={userName} />
+            <Container fluid className="chat-room">
+                <Row>
+                    <Col>
+                        <div className="messages-box" ref={msgBoxRef}>
+                            {messages.map((msg) => (
+                                <div key={msg.id} className={`message ${msg.from === userName ? 'own-message' : ''}`}>
+                                    <strong>{msg.from}: </strong>
+                                    <span>{msg.content}</span>
+                                </div>
+                            ))}
+                        </div>
+                    </Col>
+                </Row>
 
-            <Row>
-                <Col>
-                    <Form className="message-input-form" onSubmit={handleSubmit}>
-                        <Form.Control
-                            type="text"
-                            placeholder="Type your message here..."
-                            value={newMessage}
-                            onChange={(e) => setNewMessage(e.target.value)}
-                            className="message-input"
-                        />
-                        <Button variant="primary" className="send-button" type='submit'>
-                            Send
-                        </Button>
-                    </Form>
-                </Col>
-            </Row>
-        </Container>
+                <Row>
+                    <Col>
+                        <Form className="message-input-form" onSubmit={handleSendMsg}>
+                            <Form.Control
+                                type="content"
+                                placeholder="Type your message here..."
+                                value={newMessage}
+                                onChange={(e) => setNewMessage(e.target.value)}
+                                className="message-input"
+                            />
+                            <Button variant="primary" className="send-button" type='submit'>
+                                Send
+                            </Button>
+                        </Form>
+                    </Col>
+                </Row>
+            </Container>
         </>
     );
 };

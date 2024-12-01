@@ -1,16 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Container, Row, Col, Form, Button } from 'react-bootstrap';
 import './ChatRoom.css';
-import WelcomeMessage from '../shared/Button/Welcome Message/WelcomeMessage';
+import WelcomeMessage from '../shared/Welcome Message/WelcomeMessage';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const ChatRoom = () => {
     // Dummy messages data
-    const [messages, setMessages] = useState([
-        { from: 'User1', content: 'Hello there!' },
-        { from: 'User2', content: 'Hi! How are you?' },
-        { from: 'User1', content: 'I am good, thank you!' },
-    ]);
+    const [messages, setMessages] = useState([]);
     let ws = useRef(null);
 
     const [newMessage, setNewMessage] = useState('');
@@ -26,7 +22,7 @@ const ChatRoom = () => {
         
         // connecting to server and establishing WebSockets events
         const params = new URLSearchParams({ userName: userName });
-        ws.current = new WebSocket(`ws://localhost:1235/chat/chatroom?${params.toString()}`);
+        ws.current = new WebSocket(`wss://anonymous-chat-app-95aeb15099d7.herokuapp.com/chatroom?${params.toString()}`);
 
         ws.current.onopen = () => {
             console.log("WebSocket connection established.");
